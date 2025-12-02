@@ -74,4 +74,4 @@ class SearchPostsTool:
         posts = Post.objects.filter(published=True)
         return list(posts.values())
 
-```# django-mcp-integration
+```
