@@ -26,7 +26,7 @@ ASGI_APPLICATION = "django_mcp_integration.asgi.application"
 
 # Optionnel
 
-MCP_SERVER_NAME = "Mon App Django"
+MCP_SERVER_NAME = "Mon Serveur MCP"
 MCP_HOST = "localhost"
 MCP_PORT = 8000
 MCP_HTTP_PATH = "/mcp"
