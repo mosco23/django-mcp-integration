@@ -1,0 +1,5 @@
+"""Version information."""
+__version__ = "1.0.0"
+__author__ = "Cissé Anzoumana"
+__email__ = "anzcisse1@gmail.com"
+__license__ = "MIT"

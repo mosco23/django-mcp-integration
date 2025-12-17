@@ -35,6 +35,44 @@ MCP_SERVER_INSTRUCTIONS = None
 
 ```
 
+## Permissions personnalisées
+
+### Créer une permission
+
+```python
+from django_mcp_integration.permissions import BasePermission
+
+class IsResourceOwner(BasePermission):
+    """Vérifie si l'utilisateur est propriétaire de la ressource."""
+    
+    def __init__(self, resource_field: str = "owner"):
+        self.resource_field = resource_field
+    
+    def has_permission(self, request, tool) -> bool:
+        return request.user.is_authenticated
+    
+    def has_object_permission(self, request, tool, obj) -> bool:
+        return getattr(obj, self.resource_field, None) == request.user
+```
+
+## Utiliser dans un outil
+
+```bash
+from django_mcp_integration.decorators import mcp_tool
+
+@mcp_tool(
+    name="update_resource",
+    description="Met à jour une ressource",
+    permission_classes=[
+        "IsAuthenticated",
+        IsResourceOwner("author"), 
+    ]
+)
+async def update_resource(request, resource_id: int, data: dict) -> dict:
+    # Logique métier
+    pass
+
+```
 
 ## Utilisation
 
