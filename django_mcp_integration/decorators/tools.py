@@ -27,8 +27,8 @@ class ToolWrapper:
         self.permission_classes = PermissionHandler.get_permission_classes(
             permission_classes
         )
-        self.input_schema = input_schema or self._build_input_schema()
         self.is_class = inspect.isclass(target)
+        self.input_schema = input_schema or self._build_input_schema()
         
         self._validate()
     

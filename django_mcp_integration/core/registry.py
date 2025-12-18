@@ -1,11 +1,8 @@
 """Enhanced thread-safe registry with auto-reload support."""
-import logging
 from typing import Any, Dict, List, Optional
 from functools import lru_cache
 from threading import RLock
 
-from ..exceptions import ToolRegistrationError
-from ..conf import MCPConfig
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -26,9 +23,10 @@ class ToolRegistry:
     
     def __init__(self):
         if not hasattr(self, "_initialized"):
+            from .conf import config
             self._tools: Dict[str, Any] = {}
             self._metadata: Dict[str, Dict] = {}
-            self._config = MCPConfig.from_django_settings()
+            self._config = config
             self._initialized = True
             self._reload_count = 0
             logger.debug("🔧 Registry initialized")

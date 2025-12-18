@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Set, Type, Any
 from django.apps import apps
 
-from ..conf import MCPConfig
+from .conf import MCPConfig
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)

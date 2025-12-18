@@ -1,10 +1,7 @@
 """MCP server initialization."""
 from fastmcp import FastMCP
-from ..conf import MCPConfig
+from .conf import config
 
-# Load configuration
-config = MCPConfig.from_django_settings()
-config.validate()
 
 # Create MCP server instance
 mcp_server = FastMCP(
@@ -13,11 +10,3 @@ mcp_server = FastMCP(
     instructions=config.instructions,
 )
 
-# Export configuration
-MCP_CONFIG = {
-    "name": config.name,
-    "version": config.version,
-    "host": config.host,
-    "port": config.port,
-    "transport": config.transport,
-}

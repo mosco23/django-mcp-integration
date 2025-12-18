@@ -32,10 +32,7 @@ class DjangoMCPConfig(AppConfig):
     def _initialize_mcp(self):
         """Initialize MCP components."""
         # Load configuration
-        from .conf import MCPConfig
-        config = MCPConfig.from_django_settings()
-        config.validate()
-        
+        from .core.conf import config
         # Clear registry (important for reload)
         from .core.registry import registry
         registry.reload()
