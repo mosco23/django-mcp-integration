@@ -1,6 +1,9 @@
 """Unified tool decorator supporting both classes and functions."""
 import inspect
 from typing import Any, Callable, Dict, Optional, Type, Union
+from mcp.types import Icon, ToolAnnotations
+from fastmcp.utilities.types import NotSet, NotSetT
+from fastmcp.server.tasks.config import TaskConfig
 from ..core.registry import registry
 from ..exceptions import InvalidToolSignatureError
 from ..utils.logging import get_logger
@@ -16,13 +19,32 @@ class ToolWrapper:
         target: Union[Type, Callable],
         name: str,
         description: str,
-        input_schema: Optional[Dict] = None
+        input_schema: Dict = None,
+        title: str | None = None,
+        icons: list[Icon] | None = None,
+        tags: set[str] | None = None,
+        output_schema: dict[str, Any] | NotSetT | None = NotSet,
+        annotations: ToolAnnotations | dict[str, Any] | None = None,
+        exclude_args: list[str] | None = None,
+        meta: dict[str, Any] | None = None,
+        enabled: bool | None = None,
+        task: bool | TaskConfig | None = None,
     ):
         self.original_target = target
         self.name = name
         self.description = description
         self.is_class = inspect.isclass(target)
-        self.input_schema = input_schema or self._build_input_schema()
+        # self.input_schema = input_schema or self._build_input_schema()
+        self.input_schema = input_schema
+        self.title = title
+        self.icons = icons
+        self.tags = tags
+        self.output_schema = output_schema
+        self.annotations = annotations
+        self.exclude_args = exclude_args
+        self.meta = meta
+        self.enabled = enabled
+        self.task = task
         
         # Validate and get the executable target
         self._validate()
@@ -138,8 +160,17 @@ class ToolWrapper:
 
 def mcp_tool(
     name: Optional[str] = None,
+    title: str | None = None,
     description: Optional[str] = None,
-    input_schema: Optional[Dict] = None
+    icons: list[Icon] | None = None,
+    input_schema: Optional[Dict] = None,
+    tags: set[str] | None = None,
+    output_schema: dict[str, Any] | NotSetT | None = NotSet,
+    annotations: ToolAnnotations | dict[str, Any] | None = None,
+    exclude_args: list[str] | None = None,
+    meta: dict[str, Any] | None = None,
+    enabled: bool | None = None,
+    task: bool | TaskConfig | None = None,
 ):
     """
     Unified decorator for both class and function-based tools.
@@ -180,8 +211,17 @@ def mcp_tool(
         wrapper = ToolWrapper(
             target=target,
             name=tool_name,
+            title=title,
             description=tool_description,
-            input_schema=input_schema
+            icons=icons,
+            input_schema=input_schema,
+            tags=tags,
+            output_schema=output_schema,
+            annotations=annotations,
+            exclude_args=exclude_args,
+            meta=meta,
+            enabled=enabled,
+            task=task,
         )
         
         # Register in registry
