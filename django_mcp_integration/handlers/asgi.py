@@ -50,6 +50,6 @@ def get_mcp_asgi_application():
     django.setup(set_prefix=False)
     django_app = ASGIHandler()
     mcp_app = mcp_server.http_app(
-        path=config.http_path
+        path=config.http_path,
     )
     return  DjangoMCPApplication(django_app, mcp_app)
