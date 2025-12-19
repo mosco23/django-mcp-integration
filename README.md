@@ -69,7 +69,13 @@ async def add(a: int, b: int) -> int:
     description="create post by IA"
 )
 class CreatePostTool:
-    async def create(self, title: str, description: str):
+
+    # optional
+    def check_permission(self, obj):
+        pass
+
+    # required method
+    async def execute(self, title: str, content: str):
         pass
 
 ```
