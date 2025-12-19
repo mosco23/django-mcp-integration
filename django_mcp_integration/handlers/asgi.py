@@ -7,7 +7,6 @@ import django
 from django.core.handlers.asgi import ASGIHandler
 from fastmcp import FastMCP
 
-from ..core.conf import config
 from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -90,5 +89,7 @@ def get_mcp_asgi_application():
     Helper function to get the ASGI application.
     Can be used in custom ASGI files.
     """
+    from django_mcp_integration.core.server import mcp_app
     django.setup(set_prefix=False)
-    return  DjangoMCPApplication()
+    django_app = ASGIHandler()
+    return  DjangoMCPApplication(django_app, mcp_app)

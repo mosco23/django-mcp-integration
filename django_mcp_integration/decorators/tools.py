@@ -21,7 +21,7 @@ class ToolWrapper:
         permission_classes: Optional[List[Type[BasePermission]]] = None,
         input_schema: Optional[Dict] = None
     ):
-        self.target = target
+        self.target = self._init_target(target)
         self.name = name
         self.description = description
         self.permission_classes = PermissionHandler.get_permission_classes(
@@ -30,40 +30,48 @@ class ToolWrapper:
         self.is_class = inspect.isclass(target)
         self.input_schema = input_schema or self._build_input_schema()
         
-        self._validate()
-    
-    def _validate(self) -> None:
-        """Validate tool structure."""
-        if self.is_class:
-            self._validate_class()
+        
+    def _init_target(self, target):
+        # Execute the tool
+        if inspect.isclass(target) and self._validate_class(target):
+            instance = self.target()
+            func = instance.execute
+        elif self._validate_function(target):
+            func = target
         else:
-            self._validate_function()
+            func = None
+        return func
     
-    def _validate_class(self) -> None:
+    
+    def _validate_class(self, target) -> None:
         """Validate class-based tool."""
-        if not hasattr(self.target, 'execute'):
+        if not hasattr(target, 'execute'):
             raise InvalidToolSignatureError(
-                self.target.__name__,
+                target.__name__,
                 "Tool class must have an 'execute' method"
             )
         
-        if not inspect.iscoroutinefunction(self.target.execute):
+        if not inspect.iscoroutinefunction(target.execute):
             raise InvalidToolSignatureError(
-                self.target.__name__,
+                target.__name__,
                 "'execute' method must be async (async def)"
             )
         
-        self._check_kwargs(self.target.execute, self.target.__name__)
+        self._check_kwargs(target.execute, target.__name__)
+        
+        return True
     
-    def _validate_function(self) -> None:
+    def _validate_function(self, target) -> None:
         """Validate function-based tool."""
-        if not inspect.iscoroutinefunction(self.target):
+        if not inspect.iscoroutinefunction(target):
             raise InvalidToolSignatureError(
-                self.target.__name__,
+                target.__name__,
                 "Tool function must be async (async def)"
             )
         
-        self._check_kwargs(self.target, self.target.__name__)
+        self._check_kwargs(target, target.__name__)
+        
+        return True
     
     def _check_kwargs(self, func: Callable, name: str) -> None:
         """Check for **kwargs in signature."""
@@ -78,12 +86,9 @@ class ToolWrapper:
     def _build_input_schema(self) -> Dict[str, Any]:
         """Build JSON schema from signature."""
         try:
-            if self.is_class:
-                func = self.target.execute
-            else:
-                func = self.target
+        
             
-            sig = inspect.signature(func)
+            sig = inspect.signature(self.target)
             properties = {}
             required = []
             
@@ -128,6 +133,7 @@ class ToolWrapper:
             return type_map.get(param.annotation, "string")
         return "string"
     
+    
     @log_tool_execution
     async def execute(self, request: Any = None, **kwargs) -> Any:
         """
@@ -148,12 +154,7 @@ class ToolWrapper:
             self
         )
         
-        # Execute the tool
-        if self.is_class:
-            instance = self.target()
-            return await instance.execute(**kwargs)
-        else:
-            return await self.target(**kwargs)
+        return await self.target(**kwargs)
 
 
 def mcp_tool(

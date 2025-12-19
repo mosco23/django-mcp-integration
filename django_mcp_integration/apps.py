@@ -62,7 +62,7 @@ class DjangoMCPConfig(AppConfig):
     
     def _register_tools_to_server(self):
         """Register all tools from registry to MCP server."""
-        from .core.server import mcp_server
+        from .core.server import mcp_app
         from .core.registry import registry
         
         tools = registry.get_tools()
@@ -72,18 +72,11 @@ class DjangoMCPConfig(AppConfig):
             try:
                 tool_name = getattr(tool_wrapper, 'name', 'unknown_tool')
                 tool_description = getattr(tool_wrapper, 'description', 'No description')
-                
-                # Create async wrapper that preserves permissions
-                async def tool_executor(request=None, **kwargs):
-                    return await tool_wrapper.execute(request=request, **kwargs)
-                
-                tool_executor.__name__ = tool_name
-                
                 # Register in MCP server
-                mcp_server.tool(
+                mcp_app.tool(
                     name=tool_name,
                     description=tool_description
-                )(tool_executor)
+                )(tool_wrapper.target)
                 
                 logger.debug(f"✅ Registered to server: {tool_name}")
                 
