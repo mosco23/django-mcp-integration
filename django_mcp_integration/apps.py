@@ -33,6 +33,7 @@ class DjangoMCPConfig(AppConfig):
         """Initialize MCP components."""
         # Load configuration
         from .core.conf import config
+        
         # Clear registry (important for reload)
         from .core.registry import registry
         registry.reload()
@@ -62,7 +63,7 @@ class DjangoMCPConfig(AppConfig):
     
     def _register_tools_to_server(self):
         """Register all tools from registry to MCP server."""
-        from .core.server import mcp_app
+        from .core.server import mcp_server
         from .core.registry import registry
         
         tools = registry.get_tools()
@@ -70,15 +71,20 @@ class DjangoMCPConfig(AppConfig):
         
         for tool_wrapper in tools:
             try:
+                # Get tool info
                 tool_name = getattr(tool_wrapper, 'name', 'unknown_tool')
                 tool_description = getattr(tool_wrapper, 'description', 'No description')
-                # Register in MCP server
-                mcp_app.tool(
+                
+                # Create executor with explicit parameters (no **kwargs)
+                executor = tool_wrapper.target
+                
+                # Register the executor to FastMCP
+                mcp_server.tool(
                     name=tool_name,
                     description=tool_description
-                )(tool_wrapper.target)
+                )(executor)
                 
                 logger.debug(f"✅ Registered to server: {tool_name}")
                 
             except Exception as e:
-                logger.error(f"❌ Failed to register tool: {e}")
+                logger.error(f"❌ Failed to register tool {tool_name}: {e}", exc_info=True)

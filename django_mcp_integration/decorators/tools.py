@@ -1,11 +1,9 @@
 """Unified tool decorator supporting both classes and functions."""
 import inspect
-from typing import Any, Callable, Dict, Optional, Type, Union, List
+from typing import Any, Callable, Dict, Optional, Type, Union
 from ..core.registry import registry
 from ..exceptions import InvalidToolSignatureError
-from ..permissions.base import BasePermission
-from ..permissions.handlers import PermissionHandler
-from ..utils.logging import get_logger, log_tool_execution
+from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -18,60 +16,60 @@ class ToolWrapper:
         target: Union[Type, Callable],
         name: str,
         description: str,
-        permission_classes: Optional[List[Type[BasePermission]]] = None,
         input_schema: Optional[Dict] = None
     ):
-        self.target = self._init_target(target)
+        self.original_target = target
         self.name = name
         self.description = description
-        self.permission_classes = PermissionHandler.get_permission_classes(
-            permission_classes
-        )
         self.is_class = inspect.isclass(target)
         self.input_schema = input_schema or self._build_input_schema()
         
-        
-    def _init_target(self, target):
-        # Execute the tool
-        if inspect.isclass(target) and self._validate_class(target):
-            instance = self.target()
-            func = instance.execute
-        elif self._validate_function(target):
-            func = target
+        # Validate and get the executable target
+        self._validate()
+        self.target = self._get_executable_target()
+    
+    def _get_executable_target(self):
+        """Get the actual executable function."""
+        if self.is_class:
+            # For class-based tools, return the execute method
+            instance = self.original_target()
+            return instance.execute
         else:
-            func = None
-        return func
+            # For function-based tools, return the function itself
+            return self.original_target
     
+    def _validate(self) -> None:
+        """Validate tool structure."""
+        if self.is_class:
+            self._validate_class()
+        else:
+            self._validate_function()
     
-    def _validate_class(self, target) -> None:
+    def _validate_class(self) -> None:
         """Validate class-based tool."""
-        if not hasattr(target, 'execute'):
+        if not hasattr(self.original_target, 'execute'):
             raise InvalidToolSignatureError(
-                target.__name__,
+                self.original_target.__name__,
                 "Tool class must have an 'execute' method"
             )
         
-        if not inspect.iscoroutinefunction(target.execute):
+        if not inspect.iscoroutinefunction(self.original_target.execute):
             raise InvalidToolSignatureError(
-                target.__name__,
+                self.original_target.__name__,
                 "'execute' method must be async (async def)"
             )
         
-        self._check_kwargs(target.execute, target.__name__)
-        
-        return True
+        self._check_kwargs(self.original_target.execute, self.original_target.__name__)
     
-    def _validate_function(self, target) -> None:
+    def _validate_function(self) -> None:
         """Validate function-based tool."""
-        if not inspect.iscoroutinefunction(target):
+        if not inspect.iscoroutinefunction(self.original_target):
             raise InvalidToolSignatureError(
-                target.__name__,
+                self.original_target.__name__,
                 "Tool function must be async (async def)"
             )
         
-        self._check_kwargs(target, target.__name__)
-        
-        return True
+        self._check_kwargs(self.original_target, self.original_target.__name__)
     
     def _check_kwargs(self, func: Callable, name: str) -> None:
         """Check for **kwargs in signature."""
@@ -86,14 +84,18 @@ class ToolWrapper:
     def _build_input_schema(self) -> Dict[str, Any]:
         """Build JSON schema from signature."""
         try:
-        
+            # Get the function to inspect
+            if self.is_class:
+                func = self.original_target.execute
+            else:
+                func = self.original_target
             
-            sig = inspect.signature(self.target)
+            sig = inspect.signature(func)
             properties = {}
             required = []
             
             for param_name, param in sig.parameters.items():
-                if param_name == 'self' or param_name == 'request':
+                if param_name in ('self', 'request'):
                     continue
                 
                 if param.kind == param.VAR_KEYWORD:
@@ -132,35 +134,11 @@ class ToolWrapper:
             }
             return type_map.get(param.annotation, "string")
         return "string"
-    
-    
-    @log_tool_execution
-    async def execute(self, request: Any = None, **kwargs) -> Any:
-        """
-        Execute the tool with permission checks.
-        
-        Args:
-            request: Request context (for permissions)
-            **kwargs: Tool parameters
-        """
-        # Create request context if not provided
-        if request is None:
-            request = {}
-        
-        # Check permissions
-        await PermissionHandler.check_permissions(
-            self.permission_classes,
-            request,
-            self
-        )
-        
-        return await self.target(**kwargs)
 
 
 def mcp_tool(
     name: Optional[str] = None,
     description: Optional[str] = None,
-    permission_classes: Optional[List[Type[BasePermission]]] = None,
     input_schema: Optional[Dict] = None
 ):
     """
@@ -169,7 +147,6 @@ def mcp_tool(
     Args:
         name: Tool name (defaults to class/function name)
         description: Tool description (defaults to docstring)
-        permission_classes: List of permission classes (DRF-style)
         input_schema: JSON schema for input validation
     
     Examples:
@@ -177,7 +154,6 @@ def mcp_tool(
         @mcp_tool(
             name="create_post",
             description="Create a blog post",
-            permission_classes=[IsAuthenticated, HasAPIKey]
         )
         class CreatePostTool:
             async def execute(self, title: str, content: str):
@@ -187,7 +163,6 @@ def mcp_tool(
         # Function-based tool
         @mcp_tool(
             name="get_posts",
-            permission_classes=[AllowAny]
         )
         async def get_posts(limit: int = 10):
             # Implementation
@@ -206,14 +181,12 @@ def mcp_tool(
             target=target,
             name=tool_name,
             description=tool_description,
-            permission_classes=permission_classes,
             input_schema=input_schema
         )
         
         # Register in registry
         registry.register(wrapper, metadata={
             "type": "class" if is_class else "function",
-            "permissions": [p.__class__.__name__ for p in wrapper.permission_classes]
         })
         
         # Mark as registered

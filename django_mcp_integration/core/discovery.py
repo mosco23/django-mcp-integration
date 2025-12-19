@@ -7,6 +7,7 @@ from django.apps import apps
 
 from .conf import MCPConfig
 from ..utils.logging import get_logger
+from ..exceptions import ToolDiscoveryError
 
 logger = get_logger(__name__)
 
@@ -36,7 +37,7 @@ class ToolDiscovery:
             try:
                 tools = self._discover_in_app(app_config)
                 discovered_tools.extend(tools)
-            except Exception as e:
+            except ToolDiscoveryError as e:
                 logger.error(f"❌ Discovery failed in {app_config.name}: {e}")
                 self._discovery_errors.append(e)
         
