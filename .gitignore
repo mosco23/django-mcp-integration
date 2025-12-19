@@ -4,4 +4,4 @@ build/
 venv/
 */__pycache__/
 *.pyc
-mcp_project/
+dist/
