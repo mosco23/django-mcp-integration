@@ -1,6 +1,6 @@
 """
 Enhanced ASGI application supporting multiple servers (Uvicorn, Daphne, Gunicorn, runserver).
-Compatible with both django_mcp_integration.asgi:application and myproject.asgi:application
+Compatible with both ..asgi:application and myproject.asgi:application
 """
 
 from logging import getLogger
@@ -45,8 +45,8 @@ def get_mcp_asgi_application():
     Helper function to get the ASGI application.
     Can be used in custom ASGI files.
     """
-    from django_mcp_integration.core.conf import config
-    from django_mcp_integration.core.server import mcp_server
+    from ..core.conf import config
+    from ..core.server import mcp_server
     django.setup(set_prefix=False)
     django_app = ASGIHandler()
     mcp_app = mcp_server.http_app(

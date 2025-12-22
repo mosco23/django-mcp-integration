@@ -1,7 +1,7 @@
-"""Custom exceptions for django-mcp-integration."""
+from fastmcp.exceptions import FastMCPError
 
 
-class DjangoMCPError(Exception):
+class DjangoMCPError(FastMCPError):
     """Base exception for django-mcp-integration."""
     pass
 
@@ -28,3 +28,7 @@ class ToolDiscoveryError(DjangoMCPError):
 class ServerConfigurationError(DjangoMCPError):
     """Raised when server configuration is invalid."""
     pass
+
+
+class AuthenticationError(DjangoMCPError):
+    """Error in authentifation operations."""
