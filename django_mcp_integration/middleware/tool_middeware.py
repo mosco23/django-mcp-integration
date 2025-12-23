@@ -4,17 +4,18 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.exceptions import ToolError
 
 from ..core.registry import registry
-from ..decorators.tools import ToolWrapper
-from ..permissions.handlers import PermissionHandler
+
 
 
 class ToolMiddleware(Middleware):
     async def on_list_tools(self, context: MiddlewareContext, call_next):
-        result: List[ToolWrapper] = await call_next(context)
+        result = await call_next(context)
+        
+        from ..permissions.handlers import PermissionHandler
+        
         tools = [
-            registry.get_tool(tool.name) 
-            for tool in result 
-            if PermissionHandler.check_permissions(tool)
+            tool for tool in result 
+            if PermissionHandler.check_permissions(registry.get_tool(tool.name))
         ]        
         return tools
     
@@ -22,7 +23,10 @@ class ToolMiddleware(Middleware):
         # Access the tool object to check its metadata
         if context.fastmcp_context:
             try:
-                tool: ToolWrapper = registry.get_tool(context.message.name)
+                tool = registry.get_tool(context.message.name)
+                
+                from ..permissions.handlers import PermissionHandler
+                
                 if not PermissionHandler.check_permissions(tool):
                     raise ToolError(f"Access denied for tool: {tool.name}")
                 
