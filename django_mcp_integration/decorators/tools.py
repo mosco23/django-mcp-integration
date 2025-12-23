@@ -1,9 +1,13 @@
 """Unified tool decorator supporting both classes and functions."""
 import inspect
-from typing import Any, Callable, Dict, Optional, Type, Union
+from typing import Any, Callable, Optional, Type, Union, List
+from mcp.types import Icon, ToolAnnotations
+from fastmcp.utilities.types import NotSet, NotSetT
+from fastmcp.server.tasks.config import TaskConfig
 from ..core.registry import registry
 from ..exceptions import InvalidToolSignatureError
 from ..utils.logging import get_logger
+from ..permissions.base import BaseHasAPIKey
 
 logger = get_logger(__name__)
 
@@ -16,13 +20,31 @@ class ToolWrapper:
         target: Union[Type, Callable],
         name: str,
         description: str,
-        input_schema: Optional[Dict] = None
+        title: str | None = None,
+        icons: list[Icon] | None = None,
+        tags: set[str] | None = None,
+        output_schema: dict[str, Any] | NotSetT | None = NotSet,
+        annotations: ToolAnnotations | dict[str, Any] | None = None,
+        exclude_args: list[str] | None = None,
+        meta: dict[str, Any] | None = None,
+        enabled: bool | None = None,
+        task: bool | TaskConfig | None = None,
+        permissions: Optional[List[BaseHasAPIKey]] = None
     ):
         self.original_target = target
         self.name = name
         self.description = description
         self.is_class = inspect.isclass(target)
-        self.input_schema = input_schema or self._build_input_schema()
+        self.title = title
+        self.icons = icons
+        self.tags = tags
+        self.output_schema = output_schema
+        self.annotations = annotations
+        self.exclude_args = exclude_args
+        self.meta = meta
+        self.enabled = enabled
+        self.task = task
+        self.permissions = permissions
         
         # Validate and get the executable target
         self._validate()
@@ -81,46 +103,6 @@ class ToolWrapper:
                     f"Tool cannot use **kwargs. Define parameters explicitly."
                 )
     
-    def _build_input_schema(self) -> Dict[str, Any]:
-        """Build JSON schema from signature."""
-        try:
-            # Get the function to inspect
-            if self.is_class:
-                func = self.original_target.execute
-            else:
-                func = self.original_target
-            
-            sig = inspect.signature(func)
-            properties = {}
-            required = []
-            
-            for param_name, param in sig.parameters.items():
-                if param_name in ('self', 'request'):
-                    continue
-                
-                if param.kind == param.VAR_KEYWORD:
-                    continue
-                
-                param_type = self._get_param_type(param)
-                param_schema = {"type": param_type}
-                
-                if param.default != param.empty:
-                    param_schema["default"] = param.default
-                else:
-                    required.append(param_name)
-                
-                properties[param_name] = param_schema
-            
-            return {
-                "type": "object",
-                "properties": properties,
-                "required": required
-            }
-            
-        except Exception as e:
-            logger.warning(f"⚠️  Could not build schema: {e}")
-            return {"type": "object", "properties": {}, "required": []}
-    
     def _get_param_type(self, param) -> str:
         """Determine JSON type from parameter annotation."""
         if param.annotation != param.empty:
@@ -138,35 +120,20 @@ class ToolWrapper:
 
 def mcp_tool(
     name: Optional[str] = None,
+    title: str | None = None,
     description: Optional[str] = None,
-    input_schema: Optional[Dict] = None
+    icons: list[Icon] | None = None,
+    tags: set[str] | None = None,
+    output_schema: dict[str, Any] | NotSetT | None = NotSet,
+    annotations: ToolAnnotations | dict[str, Any] | None = None,
+    exclude_args: list[str] | None = None,
+    meta: dict[str, Any] | None = None,
+    enabled: bool | None = None,
+    task: bool | TaskConfig | None = None,
+    permissions: Optional[List[BaseHasAPIKey]] = None
 ):
     """
     Unified decorator for both class and function-based tools.
-    
-    Args:
-        name: Tool name (defaults to class/function name)
-        description: Tool description (defaults to docstring)
-        input_schema: JSON schema for input validation
-    
-    Examples:
-        # Class-based tool
-        @mcp_tool(
-            name="create_post",
-            description="Create a blog post",
-        )
-        class CreatePostTool:
-            async def execute(self, title: str, content: str):
-                # Implementation
-                pass
-        
-        # Function-based tool
-        @mcp_tool(
-            name="get_posts",
-        )
-        async def get_posts(limit: int = 10):
-            # Implementation
-            pass
     """
     def decorator(target: Union[Type, Callable]) -> Union[Type, Callable]:
         # Determine if it's a class or function
@@ -180,8 +147,17 @@ def mcp_tool(
         wrapper = ToolWrapper(
             target=target,
             name=tool_name,
+            title=title,
             description=tool_description,
-            input_schema=input_schema
+            icons=icons,
+            tags=tags,
+            output_schema=output_schema,
+            annotations=annotations,
+            exclude_args=exclude_args,
+            meta=meta,
+            enabled=enabled,
+            task=task,
+            permissions=permissions
         )
         
         # Register in registry

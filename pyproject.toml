@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-mcp-integration"
-version = "1.0.4"
+version = "1.0.5"
 description = "Intégration MCP pour Django via FastMCP"
 authors = [{name = "Cissé Anzoumana", email = "anzcisse1@gmail.com"}]
 readme = "README.md"
